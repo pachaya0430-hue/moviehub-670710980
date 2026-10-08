@@ -1,77 +1,53 @@
 import { useState } from 'react';
 
-// ฟอร์มรีวิว state 3 ตัว (review, error, status) เหมือนเดิม
-// ที่เปลี่ยน: ไม่จำลอง server เองแล้ว รับฟังก์ชัน onSubmit(text) จากแม่ ซึ่งจะไปยิง POST จริง
-
-function ReviewForm({ movieTitle, onSubmit }) {
-
-  const [review, setReview] = useState('');
-
+export default function ReviewForm({ onSubmit, isSubmitting }) {
+  const [text, setText] = useState('');
   const [error, setError] = useState(null);
 
-  const [status, setStatus] = useState('typing'); // 'typing' | 'submitting' | 'success'
+  // เงื่อนไข: ข้อความต้องมีอย่างน้อย 10 ตัวอักษร
+  const isValid = text.trim().length >= 10;
 
-  if (status === 'success') {
-    return (
-      <p className="rounded-lg bg-emerald-50 p-4 text-emerald-700">
-        ขอบคุณสำหรับรีวิว {movieTitle} 🎉
-      </p>
-    );
-  }
-
-  async function handleSubmit(e) {
-
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    setStatus('submitting');
+    if (!isValid || isSubmitting) return;
 
     setError(null);
-
     try {
-      await onSubmit(review); // แม่เป็นคนรู้ว่าจะส่งไปที่ไหน ฟอร์มไม่ต้องรู้
-      setStatus('success');
+      await onSubmit(text);
+      setText(''); // 👈 ล้างช่องพิมพ์เมื่อส่งสำเร็จ (แก้ข้อที่เคลียร์ input)
     } catch (err) {
-      setStatus('typing');
-      setError(err); // ข้อความ 400 / 401 / 409 จาก server
+      setError(err.message || 'ส่งไม่ผ่าน กรุณาลองใหม่');
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      <h3 className="font-medium text-slate-900">เขียนรีวิว</h3>
 
-      <h3 className="font-medium text-slate-900">
-        เขียนรีวิว {movieTitle}
-      </h3>
+      {error && (
+        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
 
       <textarea
-        value={review}
-        onChange={(e) => setReview(e.target.value)}
-        disabled={status === 'submitting'}
-        rows={3}
-        placeholder="ดูแล้วรู้สึกอย่างไร (อย่างน้อย 10 ตัวอักษร)"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="ดูแล้วรู้สึกอย่างไร"
+        rows="3"
+        disabled={isSubmitting}
         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50"
       />
 
       <div className="flex items-center gap-3">
-
         <button
           type="submit"
-          disabled={review.trim().length === 0 || status === 'submitting'}
+          disabled={!isValid || isSubmitting} // 👈 ปิดใช้งานปุ่มถ้าพิมพ์ไม่ครบ 10 ตัวอักษร (แก้ข้อ toBeDisabled)
           className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:bg-slate-300"
         >
-          {status === 'submitting' ? 'กำลังส่ง...' : 'ส่งรีวิว'}
+          {isSubmitting ? 'กำลังส่ง...' : 'ส่งรีวิว'}
         </button>
-
-        {error && (
-          <p className="text-sm text-red-600">
-            {error.message}
-          </p>
-        )}
-
       </div>
-
     </form>
   );
 }
-
-export default ReviewForm;
